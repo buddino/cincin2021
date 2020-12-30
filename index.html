@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<head>
+    <link rel="stylesheet" type="text/css" href="awesomplete.css">
+    <link rel="stylesheet" type="text/css" href="flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" type="text/css" href="animate.min.css">
+
+
+</head>
+
+<body>
+    <audio id="sound">
+        <source src="newyear.mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="night.js"></script>
+    <script src="d3.js"></script>
+    <script src="colorbrewer.js"></script>
+    <script src="topojson.js"></script>
+    <script src="moment.min.js"></script>
+    <script src="moment-timezone-with-data.js"></script>
+    <script src="underscore-min.js"></script>
+    <script src="flatpickr.min.js"></script>
+    <script src="awesomplete.min.js"></script>
+    <script src="timezones.js"></script>
+    <script src="drinks.js"></script>
+
+
+    <script>
+        const base_opacity = 0.1;
+        let current_utc;
+        var π = Math.PI,
+            radians = π / 180,
+            degrees = 180 / π;
+
+        var circle = d3.geo.circle()
+            .angle(90);
+
+        // TODO update if open in browser for a long long time?
+        var nownow = moment(Date.now());
+
+        // function creates a classname for the offset that
+        // a given zonename belongs to (e.g., America/New_York ==> UTC-4)
+        function offset_class(zonename) {
+            try {
+                if (moment.tz.zone(zonename)) {
+                    minutes = nownow.tz(zonename).utcOffset();
+                    // momentjs gives offset relative to selected zone, so flip it
+                    hours = (minutes / 60.0) * -1;
+
+                    // can't have . or + in css class names, so
+                    // strip decimals
+                    hours = hours.toString().replace(/\./g, '');
+
+                    // prepend positive offsets with _ so we can
+                    // differentiate offset sign easily while debugging
+                    // based on this character versus - for negatives
+                    return 'UTC' + (hours < 0 ? '' : '_') + hours;
+                }
+            } catch (e) {
+                // ignore errors!
+                // America/Coral_Harbour is not in moment.js data
+                // same for antarctica
+                return '';
+            }
+        };
+
+        //_.uniq(_.map(svg.selectAll('.timezone')[0], function(d) { return _.last(d.classList) }))
+        // ordered zones so they can be colored sequentially
+        // had to order by hand :(
+        var offsets = ["UTC-13", "UTC-12", "UTC-11", "UTC-10", "UTC-875", "UTC-85", "UTC-8", "UTC-7", "UTC-65", "UTC-6", "UTC-575", "UTC-55", "UTC-5", "UTC-45", "UTC-4", "UTC-35", "UTC-3", "UTC-25", "UTC-2", "UTC_0", "UTC_1", "UTC_2", "UTC_25", "UTC_3", "UTC_4", "UTC_45", "UTC_5", "UTC_55", "UTC_575", "UTC_6", "UTC_65", "UTC_7", "UTC_8", "UTC_875", "UTC_9", "UTC_95", "UTC_10", "UTC_11"];
+        var selected = new Array();
+
+        COLOR_GOOD = '#3CB43C';
+        COLOR_OK = '#FFC37A';
+        COLOR_BAD = '#9D4D34';
+        COLOR_HIGHLIGHT = '#333';
+
+        var colorscale = d3.scale.ordinal()
+            .domain(offsets)
+            .range(colorbrewer.Paired[12]);
+
+        function colors(d) {
+            if (selected.indexOf(d.id) === -1) {
+                return colorscale(offset_class(d.id));
+            } else {
+                return COLOR_HIGHLIGHT;
+            }
+        }
+
+        var tooltip = d3.select("body")
+            .append("div")
+            .attr("class", "tooltip");
+
+        var width = 960,
+            height = 960;
+
+        var projection = d3.geo.mercator()
+            .scale(width / 2 / Math.PI)
+            .translate([width / 2, height / 2])
+            .precision(.1);
+
+        var path = d3.geo.path()
+            .projection(projection);
+
+        var svg = d3.select("body").append("svg")
+            .attr("id", "map")
+            .attr("width", width)
+            .attr("height", height);
+
+        svg.append("rect")
+            .attr("id", "midnight")
+            .attr("x", 0)
+            .attr("y", 0)
+            .attr("width", width)
+            .attr("height", height)
+            .attr("opacity", "0.1")
+            .style("fill", "#000099");
+
+        svg.append("line")
+            .attr("id", "midnight_l")
+            .attr("x1", width)
+            .attr("y1", 0)
+            .attr("x2", width)
+            .attr("y2", height)
+            .attr("opacity", "1.0")
+            .attr("stroke", "#000000")
+
+
+        d3.select(self.frameElement).style("height", height + "px");
+        path.projection(null);
+
+        svg.insert("g", ".graticule")
+            .attr("class", "timezones")
+            .selectAll("path")
+            .data(topojson.feature(timezones, timezones.objects.timezones).features)
+            .enter().append("path")
+            .attr("id", function (d) { return d.id.replace(/\//g, ""); })
+            .attr("d", path)
+            .attr("fill", function (d) { return colors(d); })
+            .attr("opacity", base_opacity)
+            .attr("stroke", "#000000")
+            .attr("class", function (d) { return 'timezone ' + offset_class(d.id); });/*
+            .on("mousemove", onhover)
+            .on("mouseout", onout);*/
+
+
+        function onhover(d) {
+            svg.selectAll('.' + offset_class(d.id))
+                .attr('opacity', '0.5')
+                .attr('fill', colors(d));
+            var mouse = d3.mouse(svg.node()).map(function (d) { return parseInt(d); });
+
+            // lookup offset in minutes, transform to hours relative UTC
+            var hours = (nownow.tz(d.id).utcOffset() / 60.0) * -1;
+            var display = d.id + ': UTC' + (hours < 0 ? '' : '+') + hours;
+
+            tooltip
+                .classed("hidden", false)
+                .attr("style", "left:" + (mouse[0] + 25) + "px;top:" + (mouse[1] + 15) + "px")
+                .html(display);
+
+        }
+
+        function onout(d) {
+            svg.selectAll('.timezone')
+                .attr('opacity', base_opacity)
+                .attr('fill', function (p) { return colors(p); });
+            highlightCurrent();
+            tooltip.classed("hidden", true);
+        }
+
+
+        function pad(str) {
+            var out = str;
+            var diff = 30 - str.length;
+            var filler = '&nbsp';
+            for (var i = 0; i < diff; i++) {
+                out = filler + out;
+            }
+            return out;
+        }
+
+        function select(d) {
+            if (selected.indexOf(d.id) > -1) {
+                selected.splice(d.id, 1);
+                compare.selectAll('.compare-' + d.id.replace(/\//g, '')).remove()
+
+            } else {
+                selected.push(d.id);
+
+                svg.selectAll('.' + offset_class(d.id)).transition()
+                    .attr('opacity', '1')
+                    .attr('fill', COLOR_HIGHLIGHT);
+
+                comparing.push(d);
+                localtime = nownow.tz(d.id);
+
+                compare
+                    .append('li')
+                    .attr('class', 'compare-' + d.id.replace(/\//g, ''))
+                    .style('color', agony(localtime))
+                    .html(pad(d.id) + ': ' + localtime.format('ddd DD MMMM YYYY, HH:mm a zz [UTC]Z'));
+
+            }
+        }
+
+
+        function agony(datetime) {
+            if (datetime.hour() < 6) {
+                return COLOR_BAD;
+            }
+            else if (datetime.hour() > 22) {
+                return COLOR_BAD;
+            }
+            else if (datetime.hour() > 7 && datetime.hour() < 17) {
+                return COLOR_GOOD;
+            }
+            else {
+                return COLOR_OK;
+            }
+        }
+
+        function update_datetime(datetime) {
+            nownow = moment(datetime);
+
+            // TODO fix update of nighttime mask
+            // night.datum(circle.origin(antipode(solarPosition(new Date(nownow))))).attr("d", path);
+
+
+            _.each(comparing, function (d) {
+                /* TODO DRY this and orig bit from select function */
+                localtime = nownow.tz(d.id);
+
+                compare
+                    .append('li')
+                    .attr('class', 'compare-' + d.id.replace(/\//g, ''))
+                    .style('fill', agony(localtime))
+                    .style('color', agony(localtime))
+                    .html(pad(d.id) + ': ' + localtime.format('ddd DD MMMM YYYY, HH:mm a zz [UTC]Z'));
+            })
+        }
+
+        flatpickr('.flatpickr', {
+            defaultDate: nownow.format("YYYY-MM-DD HH:mm"),
+            onChange: update_datetime
+        })
+
+        function computeCurrentZone() {
+            let TZ = 24 - moment().tz('UTC').hours();
+            let current = '.UTC' + (TZ > 0 ? '-' : '_') + Math.abs(TZ);
+            if (current != current_utc) {
+                nextZone(current);
+                current_utc = current;
+            }
+            return current;
+        }
+
+        const color = "#FF0000";
+
+        function highlightCurrent() {
+            let opacity = moment().minutes() > 45 ? base_opacity : Math.exp(1 / (moment().minutes() + 1) - 1)
+            svg.selectAll(computeCurrentZone())
+                .attr('opacity', opacity.toFixed(2))
+                .attr('fill', color);
+        }
+
+        function nextZone(zone) {
+            if (!current_utc) {
+                return;
+            }
+            setData(zone);
+            _speak("Happy new year "+data.country);
+            document.getElementById("sound").play()
+        }
+
+        function setData(zone){
+            zone = zone.replace(".","");
+            let data = drinks[zone];
+            document.getElementById("drink").innerText = data.drink;
+            document.getElementById("country").innerHTML = `<img src="flags/${data.flag}"><span>${data.country}</span><img src="flags/${data.flag}">`;
+        }
+
+        const zeroPad = (num, places) => String(num).padStart(places, '0')
+
+
+        function midnight() {
+            const m = moment().tz('UTC');
+            speak(m);
+            let pos;
+            if (m.hours() < 12) {
+                pos = width / 2 - width / 1440 * (m.hours() * 60 + m.minutes());
+            } else {
+                pos = width / 2 + width / 1440 * (1440 - (m.hours() * 60 + m.minutes()));
+            }
+            svg.select("#midnight")
+                .attr("x", pos)
+                .attr("width", width - pos);
+                svg.select("#midnight_l")
+                .attr("x1", pos)
+                .attr("x2", pos);
+            return pos;
+        }
+
+        function tick(){
+            let m = 59 - moment().minutes();
+            let s = 59 - moment().seconds();
+            speak(m,s);
+            document.getElementById("timer").innerText = zeroPad(m,2) + ":" + zeroPad(s,2);
+            highlightCurrent();
+            midnight();
+        }
+
+        setInterval(tick, 1000);
+
+        function speak(m,s){
+            if(m==5 && s==0){
+                _speak("5 minutes");
+            }else if(m==1 && s==0){
+                _speak("1 minute");
+            }else if(m==0){
+                if(s<=10 && s>0){
+                    _speak(s);
+                }
+            }
+
+        }
+
+        function _speak(text){
+            var speech = new SpeechSynthesisUtterance(text);
+            speech.lang = 'en-US';
+            window.speechSynthesis.speak(speech);
+        }
+
+        function init(){
+            tick();
+            setData(computeCurrentZone());
+        }
+
+    </script>
+
+    <div id="overlay">
+        <p id="timer">49:20</p>
+        <p class="meta" id="drink">DRINK</p>
+        <p class="meta" id="country">PAESE</p>
+    </div>
+
+    <script>
+        init();
+    </script>
+</body>

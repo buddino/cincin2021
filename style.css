@@ -1,0 +1,86 @@
+body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+#overlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+#timer {
+        font-size: 40vh;
+        opacity: 0.5;
+        pointer-events: none;
+        margin: -40px 0;    
+}
+.meta {
+    margin: 0;
+    font-size: 6vh;
+}
+
+.meta img {
+    height: 1.2em;
+    margin: -0.2em 0.5em;
+}
+
+#map {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.timezone {
+    stroke-opacity: 1;
+    stroke-width: 1px;
+}
+
+/*.timezones :hover {
+    opacity: .5;
+    stroke-opacity: 1;
+    stroke-width: 1px;
+}*/
+
+.boundary {
+    fill: none;
+    stroke: rgb(0, 0, 0);
+    stroke-width: .5px;
+    pointer-events: none;
+}
+
+div.tooltip {
+    color: #222;
+    background: #fff;
+    padding: .5em;
+    text-shadow: #f5f5f5 0 1px 0;
+    border-radius: 2px;
+    box-shadow: 0px 0px 2px 0px #a6a6a6;
+    opacity: 0.9;
+    position: absolute;
+}
+
+div.tooltip .sep {
+    color: #444;
+    font-weight: 300;
+}
+
+.hidden {
+    display: none;
+}
+
+.night {
+    stroke: rgb(0, 30, 54);
+    fill: rgb(0, 0, 0);
+    fill-opacity: .05;
+}
+
+.search {
+    float: right;
+}
+
+.compare {
+    font-family: monospace;
+}
