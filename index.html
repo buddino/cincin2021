@@ -29,6 +29,7 @@
 
 
     <script>
+        const re = new RegExp(/\.UTC(.)(\d*)/);
         const base_opacity = 0.1;
         let current_utc;
         var π = Math.PI,
@@ -277,8 +278,19 @@
         }
 
         function setData(zone){
-            zone = zone.replace(".","");
+            let tmp = re.exec(zone);
+            let s = tmp[1];
+            let tz = tmp[2];
+            if(parseInt(tz)>14){
+                zone = "UTC"+s+tz[0];
+            }else{
+                zone = zone.replace(".","");
+            }
             let data = drinks[zone];
+            if(!data){
+                document.getElementById("drink").innerText = "...";
+                document.getElementById("country").innerText = "...";
+            }
             document.getElementById("drink").innerText = data.drink;
             document.getElementById("country").innerHTML = `<img src="flags/${data.flag}"><span>${data.country}</span><img src="flags/${data.flag}">`;
         }
